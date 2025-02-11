@@ -8,16 +8,29 @@ credentials = service_account.Credentials.from_service_account_file('./google-cr
 # Function to extract product details in multiple languages
 def extract_multilingual_details(product_name):
     # Patterns for extraction (English, German, Spanish, French, Italian terms)
-    volume_pattern = r'(\d+\.?\d*)\s?(ml|mL|l|L|g|mg|kg|\u00b5g|oz|Gramm|Liter|Milliliter|mililitros|litro|gramo|milligramme|litre|gramme|millilitro|litri|grammi)'
+    volume_pattern = r'(\d+\.?\d*)\s?(ml|mL|l|L|g|mg|kg|\u00b5g|oz|gr|Gramm|Liter|Milliliter|mililitros|litro|gramo|milligramme|litre|gramme|millilitro|litri|grammi)'
     count_pattern = r'(\d+)\s?(tablet|capsule|caps|bottle|pack|vial|drop|effervescence|karton|count|piece|pieces|Tabletten|Kapseln|Flasche|Packung|Ampullen|Tropfen|St\u00fcck|tableta|c\u00e1psula|botella|paquete|vial|gota|effervescente|cart\u00f3n|comprim\u00e9|capsule|bouteille|paquet|flacon|goutte|compressa|capsula|bottiglia|confezione|fiala|goccia)'
-    dosage_pattern = r'(\d+\.?\d*)\s?(mg|g|\u00b5g|Milligramm|Gramm|Mikrogramm|miligramos|gramos|microgramos|milligramme|gramme|microgramme|milligrammo|grammo|microgrammo)'
+    dosage_pattern = r'(\d+\.?\d*)\s?(mg|g|gr|\u00b5g|Milligramm|Gramm|Mikrogramm|miligramos|gramos|microgramos|milligramme|gramme|microgramme|milligrammo|grammo|microgrammo)'
     packaging_pattern = r'\b(tablet|capsule|drop|effervescence|bottle|vial|karton|pack|count|piece|pieces|Tabletten|Kapseln|Flasche|Packung|Ampulle|Tropfen|St\u00fcck|tableta|c\u00e1psula|botella|paquete|vial|gota|effervescente|cart\u00f3n|comprim\u00e9|capsule|bouteille|paquet|flacon|goutte|compressa|capsula|bottiglia|confezione|fiala|goccia)\b'
+    multiplication_pattern = r'(\d+)x(\d+\.?\d*)\s?(mg|g|gr|\u00b5g)'
 
     # Initialize extracted fields
     volume, volume_unit = None, None
     count, count_unit = None, None
     dosage, dosage_unit = None, None
     packaging_type = None
+
+    # Extract multiplication dosage (e.g., 3x3.5g → 10.5g)
+    multiplication_match = re.search(multiplication_pattern, product_name, re.IGNORECASE)
+    if multiplication_match:
+        num_units, unit_weight, unit = multiplication_match.groups()
+        total_weight = float(num_units) * float(unit_weight)
+        dosage, dosage_unit = str(total_weight), unit
+    else:
+        # Extract dosage normally
+        dosage_match = re.search(dosage_pattern, product_name, re.IGNORECASE)
+        if dosage_match:
+            dosage, dosage_unit = dosage_match.groups()
 
     # Extract volume
     volume_match = re.search(volume_pattern, product_name, re.IGNORECASE)
@@ -28,11 +41,6 @@ def extract_multilingual_details(product_name):
     count_match = re.search(count_pattern, product_name, re.IGNORECASE)
     if count_match:
         count, count_unit = count_match.groups()
-
-    # Extract dosage
-    dosage_match = re.search(dosage_pattern, product_name, re.IGNORECASE)
-    if dosage_match:
-        dosage, dosage_unit = dosage_match.groups()
 
     # Extract packaging type
     packaging_match = re.search(packaging_pattern, product_name, re.IGNORECASE)
@@ -51,21 +59,21 @@ def extract_multilingual_details(product_name):
 
 # Connect to BigQuery and load data
 def load_data_from_bigquery(query, project_id):
-    client = bigquery.Client(project=project_id,credentials=credentials)
+    client = bigquery.Client(project=project_id)
     query_job = client.query(query)
     results = query_job.to_dataframe()
     return results
 
 # Save results back to BigQuery
 def save_results_to_bigquery(dataframe, table_id, project_id):
-    client = bigquery.Client(project=project_id,credentials=credentials)
+    client = bigquery.Client(project=project_id)
     job = client.load_table_from_dataframe(dataframe, table_id)
     job.result()  # Wait for the job to complete
     print(f"Data saved to {table_id}")
 
 # Compare results with previous data
 def compare_with_previous_results(new_data, table_id, project_id):
-    client = bigquery.Client(project=project_id,credentials=credentials)
+    client = bigquery.Client(project=project_id)
     previous_data_query = f"SELECT * FROM `{table_id}`"
     previous_data = client.query(previous_data_query).to_dataframe()
 
