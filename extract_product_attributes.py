@@ -78,8 +78,8 @@ def compare_with_previous_results(new_data, table_id, project_id):
     previous_data = client.query(previous_data_query).to_dataframe()
 
     # Perform comparison (example: find new rows)
-    differences = new_data.merge(previous_data, how='outer', indicator=True)
-    new_entries = differences[differences['_merge'] == 'left_only']
+    new_entries = new_data.merge(previous_data, how='outer', indicator=True)
+    new_entries = new_entries[new_entries['_merge'] == 'left_only'].drop(columns=['_merge'])
 
     print(f"Found {len(new_entries)} new entries.")
     return new_entries
