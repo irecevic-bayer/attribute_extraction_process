@@ -59,21 +59,21 @@ def extract_multilingual_details(product_name):
 
 # Connect to BigQuery and load data
 def load_data_from_bigquery(query, project_id):
-    client = bigquery.Client(project=project_id)
+    client = bigquery.Client(project=project_id,credentials=credentials)
     query_job = client.query(query)
     results = query_job.to_dataframe()
     return results
 
 # Save results back to BigQuery
 def save_results_to_bigquery(dataframe, table_id, project_id):
-    client = bigquery.Client(project=project_id)
+    client = bigquery.Client(project=project_id,credentials=credentials)
     job = client.load_table_from_dataframe(dataframe, table_id)
     job.result()  # Wait for the job to complete
     print(f"Data saved to {table_id}")
 
 # Compare results with previous data
 def compare_with_previous_results(new_data, table_id, project_id):
-    client = bigquery.Client(project=project_id)
+    client = bigquery.Client(project=project_id,credentials=credentials)
     previous_data_query = f"SELECT * FROM `{table_id}`"
     previous_data = client.query(previous_data_query).to_dataframe()
 
