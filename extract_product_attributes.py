@@ -41,11 +41,21 @@ def extract_multilingual_details(product_name):
     count_match = re.search(count_pattern, product_name, re.IGNORECASE)
     if count_match:
         count, count_unit = count_match.groups()
+    else:
+        count = 1  # Default to 1 if count is unknown
 
     # Extract packaging type
     packaging_match = re.search(packaging_pattern, product_name, re.IGNORECASE)
     if packaging_match:
         packaging_type = packaging_match.group(1)
+
+    
+    # Calculate unit weight, avoiding division by zero
+    if dosage:
+        try:
+            unit_weight = float(dosage) / float(count)
+        except ValueError:
+            unit_weight = None
 
     return pd.Series({
         'Volume': volume,
@@ -54,7 +64,8 @@ def extract_multilingual_details(product_name):
         'Count_Unit': count_unit,
         'Dosage': dosage,
         'Dosage_Unit': dosage_unit,
-        'Packaging_Type': packaging_type
+        'Packaging_Type': packaging_type,
+        'Unit_Weight': unit_weight
     })
 
 # Connect to BigQuery and load data
@@ -105,7 +116,7 @@ def process_bigquery_data(input_query, output_table, project_id):
     if not new_entries.empty:
         save_results_to_bigquery(new_entries, output_table, project_id)
 
-# Example usage
+# running process and usage
 input_query = "SELECT DISTINCT country_code, ASIN, name FROM `bayer-ch-ecommerce.ch_h10.fact_profitero_sns`"
 output_table = "bayer-ch-ecommerce.ch_ecommerce_eu5.fact_product_attributes"
 project_id = "bayer-ch-ecommerce"
